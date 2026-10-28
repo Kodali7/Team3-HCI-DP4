@@ -23,6 +23,12 @@ export default function InventoryScreen({ items, setItems }) {
   };
 
   const applyAmount = (item, direction) => {
+    if (direction < 0 && item.amount > item.stock) {
+      setMessage(
+        `Not enough ${item.name}. Only ${item.stock} ${item.unit} available.`
+      );
+      return;
+    }
     const stock = Math.max(0, item.stock + direction * item.amount);
     updateItem(item.id, { stock });
     const verb = direction < 0 ? 'Used' : 'Added';

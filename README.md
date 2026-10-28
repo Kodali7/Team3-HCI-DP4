@@ -28,7 +28,7 @@ Planned features include:
 
 # Installation
 
-1. Clone the team's GitHub repository: `git clone https://github.com/Kodali7/Team3-HCI-DP4.git`
+1. Clone the GitHub repository: `git clone https://github.com/Kodali7/Team3-HCI-DP4.git`
 2. Navigate to mobile directory: `cd Team3-HCI-DP4/mobile`
 3. Install dependencies: `npm ci`
 4. Start the development server: `npx expo start`
