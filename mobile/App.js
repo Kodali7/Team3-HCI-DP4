@@ -41,9 +41,9 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="auto" />
       {activeTab === 'truck' && <TruckManagementScreen />}
-      {activeTab === 'inventory' && <InventoryScreen items={items} setItems={setItems} />}
+      {activeTab === 'inventory' && <InventoryScreen items={items} setItems={setItems} onViewRestock={() => setActiveTab('restock')} />}
       {activeTab === 'dishes' && <ComingSoon title="Dishes" />}
-      {activeTab === 'restock' && <ComingSoon title="Restock List" />}
+      {activeTab === 'restock' && <InventoryScreen items={items} setItems={setItems} restock onViewRestock={() => setActiveTab('restock')} />}
       <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />
     </View>
   );
