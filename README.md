@@ -31,8 +31,15 @@ Planned features include:
 1. Clone the GitHub repository: `git clone https://github.com/Kodali7/Team3-HCI-DP4.git`
 2. Navigate to mobile directory: `cd Team3-HCI-DP4/mobile`
 3. Install dependencies: `npm ci`
-4. Start the development server: `npx expo start`
-5. Scan the QR code displayed in the terminal using Expo Go on your mobile device.
+4. Check your Expo login status: `npx expo whoami`
+5. If you are not logged in, authenticate using: `npx expo login`
+6. If you use Google authentication or experience browser login issues, use: `npx eas-cli@latest login --device`
+
+Follow the provided link and sign in with your Expo account using Google.
+
+7. Sign in to Expo Go on your mobile device using the same Expo account.
+8. Start the development server: `npx expo start`
+9. Scan the QR code displayed in the terminal using Expo Go on your mobile device.
 
 Your device's Expo Go version should be compatible with Expo SDK 58. Your computer and mobile device should be connected to the same Wi-Fi network for local development.
 
