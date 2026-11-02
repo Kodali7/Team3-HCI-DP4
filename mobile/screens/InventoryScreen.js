@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, Pressable, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather';
 import { COLORS } from '../theme';
 
-export default function InventoryScreen({ items, setItems }) {
+export default function InventoryScreen({ items, setItems, restock = false, onViewRestock }) {
   const [message, setMessage] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [stockInput, setStockInput] = useState('');
+  const [minInput, setMinInput] = useState('');
+  const [error, setError] = useState('');
+  const visibleItems = restock ? items.filter((item) => item.stock < item.min) : items;
 
   // Hide the confirmation banner a few seconds after each change
   useEffect(() => {
@@ -17,35 +22,52 @@ export default function InventoryScreen({ items, setItems }) {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...changes } : item)));
   };
 
-  // -/+ only change the amount in the selector; Use/Add apply it to the stock
-  const changeAmount = (item, delta) => {
-    updateItem(item.id, { amount: Math.max(1, item.amount + delta) });
+  const showStockChange = (item, stock, min) => {
+    if (stock < min && item.stock >= item.min) {
+      setMessage(`${item.name} was added to the Restock List`);
+    }
   };
 
-  const applyAmount = (item, direction) => {
-    if (direction < 0 && item.amount > item.stock) {
-      setMessage(
-        `Not enough ${item.name}. Only ${item.stock} ${item.unit} available.`
-      );
-      return;
-    }
+  const changeStock = (item, direction) => {
     const stock = Math.max(0, item.stock + direction * item.amount);
     updateItem(item.id, { stock });
-    const verb = direction < 0 ? 'Used' : 'Added';
-    setMessage(`${verb} ${item.amount} ${item.unit} of ${item.name} · ${stock} ${item.unit} left`);
+    showStockChange(item, stock, item.min);
+  };
+
+  const openEditor = (item) => {
+    setEditing(item);
+    setStockInput(String(item.stock));
+    setMinInput(String(item.min));
+    setError('');
+  };
+
+  const saveItem = () => {
+    const stock = Number(stockInput);
+    const min = Number(minInput);
+    if (!stockInput.trim() || !minInput.trim() ||
+        !Number.isFinite(stock) || !Number.isFinite(min) || stock < 0 || min < 0) {
+      setError('Enter a valid quantity of zero or more.');
+      return;
+    }
+    updateItem(editing.id, { stock, min });
+    showStockChange(editing, stock, min);
+    setEditing(null);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Inventory</Text>
+      <Text style={styles.title}>{restock ? 'Restock List' : 'Inventory'}</Text>
       {message && (
-        <View style={styles.banner} accessibilityLiveRegion="polite">
-          <Feather name="check-circle" size={16} color={COLORS.primary} />
-          <Text style={styles.bannerText}>{message}</Text>
-        </View>
+        <Pressable style={styles.banner} onPress={onViewRestock} accessibilityRole="button"
+          accessibilityLabel={`${message}. View Restock List`}>
+          <Text style={styles.bannerText} accessibilityLiveRegion="polite">{message} · View →</Text>
+        </Pressable>
       )}
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {items.map((item) => {
+        {restock && visibleItems.length === 0 && (
+          <Text style={styles.emptyText}>All ingredients meet their minimum stock levels.</Text>
+        )}
+        {visibleItems.map((item) => {
           const low = item.stock < item.min;
           return (
             <View key={item.id} style={[styles.card, low && styles.cardLow]}>
@@ -60,7 +82,7 @@ export default function InventoryScreen({ items, setItems }) {
                   <Text style={styles.detail}>current stock: {item.stock} {item.unit}</Text>
                   <Text style={styles.detail}>minimum stock: {item.min} {item.unit}</Text>
                 </View>
-                <Pressable style={styles.dots} accessibilityLabel={`Edit ${item.name}`}>
+                <Pressable style={styles.dots} onPress={() => openEditor(item)} accessibilityLabel={`Edit ${item.name}`}>
                   <Feather name="more-vertical" size={18} color={COLORS.text} />
                 </Pressable>
               </View>
@@ -69,26 +91,36 @@ export default function InventoryScreen({ items, setItems }) {
                 <View style={styles.stepper}>
                   <Pressable
                     style={styles.stepButton}
-                    onPress={() => changeAmount(item, -1)}
-                    accessibilityLabel={`Decrease ${item.name} amount`}
+                    onPress={() => updateItem(item.id, { amount: Math.max(1, item.amount - 1) })}
+                    disabled={item.amount <= 1}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Decrease selected quantity for ${item.name}`}
                   >
                     <Text style={styles.stepSymbol}>-</Text>
                   </Pressable>
                   <Text style={styles.amount}>{item.amount}</Text>
                   <Pressable
                     style={styles.stepButton}
-                    onPress={() => changeAmount(item, 1)}
-                    accessibilityLabel={`Increase ${item.name} amount`}
+                    onPress={() => updateItem(item.id, { amount: item.amount + 1 })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Increase selected quantity for ${item.name}`}
                   >
                     <Text style={styles.stepSymbol}>+</Text>
                   </Pressable>
                 </View>
-                <View style={styles.actions}>
-                  <Pressable style={[styles.actionButton, styles.useButton]} onPress={() => applyAmount(item, -1)}>
-                    <Text style={styles.useLabel}>Use</Text>
+                <View style={styles.stockActions}>
+                  <Pressable style={styles.addButton} onPress={() => changeStock(item, 1)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${item.amount} ${item.unit} of ${item.name}`}>
+                    <Text style={styles.saveLabel}>Add</Text>
                   </Pressable>
-                  <Pressable style={[styles.actionButton, styles.addButton]} onPress={() => applyAmount(item, 1)}>
-                    <Text style={styles.addLabel}>Add</Text>
+                  <Pressable
+                    style={[styles.useButton, item.amount > item.stock && styles.disabledButton]}
+                    onPress={() => changeStock(item, -1)}
+                    disabled={item.amount > item.stock}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Use ${item.amount} ${item.unit} of ${item.name}`}>
+                    <Text style={styles.useLabel}>Use</Text>
                   </Pressable>
                 </View>
               </View>
@@ -96,6 +128,36 @@ export default function InventoryScreen({ items, setItems }) {
           );
         })}
       </ScrollView>
+      <Modal visible={editing !== null} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
+        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.name}>{editing?.name}</Text>
+              <Pressable onPress={() => setEditing(null)} accessibilityLabel="Close editor" hitSlop={10}>
+                <Feather name="x" size={20} color={COLORS.text} />
+              </Pressable>
+            </View>
+            <Text style={styles.inputLabel}>Minimum Level:</Text>
+            <TextInput style={styles.input} value={minInput} onChangeText={setMinInput}
+              keyboardType="decimal-pad" accessibilityLabel="Minimum level" />
+            <Text style={styles.inputLabel}>Current Stock:</Text>
+            <TextInput style={styles.input} value={stockInput} onChangeText={setStockInput}
+              keyboardType="decimal-pad" accessibilityLabel="Current stock" />
+            {error ? <Text style={styles.lowText} accessibilityLiveRegion="polite">{error}</Text> : null}
+            <View style={styles.modalActions}>
+              <Pressable style={styles.deleteButton} onPress={() => {
+                setItems((prev) => prev.filter((item) => item.id !== editing.id));
+                setEditing(null);
+              }}>
+                <Text style={styles.lowText}>Delete</Text>
+              </Pressable>
+              <Pressable style={styles.saveButton} onPress={saveItem}>
+                <Text style={styles.saveLabel}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -117,9 +179,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: COLORS.surface,
-    borderColor: COLORS.primary,
-    borderWidth: 1,
+    backgroundColor: COLORS.lowStockTint,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -127,7 +187,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     fontSize: 13,
-    color: COLORS.text,
+    color: COLORS.lowStock,
     flexShrink: 1,
   },
   list: {
@@ -190,6 +250,34 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: COLORS.surface,
   },
+  stockActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  useButton: {
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  useLabel: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.4,
+  },
   stepButton: {
     width: 40,
     height: 40,
@@ -211,34 +299,62 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     lineHeight: 40,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 8,
+  emptyText: {
+    fontSize: 15,
+    color: COLORS.secondaryText,
   },
-  actionButton: {
-    height: 40,
-    minWidth: 64,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    alignItems: 'center',
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
     justifyContent: 'center',
+    padding: 28,
   },
-  useButton: {
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
+  modal: {
     backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
   },
-  useLabel: {
-    fontSize: 14,
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.primary,
+    marginBottom: 6,
   },
-  addButton: {
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 10,
+    color: COLORS.text,
+    marginBottom: 14,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  deleteButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORS.lowStock,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+  },
+  saveButton: {
+    flex: 1,
     backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
   },
-  addLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+  saveLabel: {
     color: COLORS.surface,
+    fontWeight: '600',
   },
 });
