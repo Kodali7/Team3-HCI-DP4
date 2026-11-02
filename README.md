@@ -45,14 +45,6 @@ npx expo whoami             # Confirm which account the CLI is using
 
 `-b` starts browser login; `-h` shows the available options. If you signed up with Google and have no Expo password, use browser login with Google.
 
-If browser login fails, you can also try the device login flow from `mobile/`:
-
-```sh
-npx eas-cli@latest login --device
-```
-
-Follow the provided link, sign in with the same Expo account, then run `npx expo whoami` to confirm.
-
 Scan the terminal QR code with Expo Go (the Camera app can open the link on iPhone). From the Expo terminal, press `i` for an installed iOS simulator or `a` for a configured Android emulator. Press Ctrl+C to stop the server.
 
 You can also start a specific platform directly:
