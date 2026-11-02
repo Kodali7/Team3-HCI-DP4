@@ -45,6 +45,14 @@ npx expo whoami             # Confirm which account the CLI is using
 
 `-b` starts browser login; `-h` shows the available options. If you signed up with Google and have no Expo password, use browser login with Google.
 
+If browser login fails, you can also try the device login flow from `mobile/`:
+
+```sh
+npx eas-cli@latest login --device
+```
+
+Follow the provided link, sign in with the same Expo account, then run `npx expo whoami` to confirm.
+
 Scan the terminal QR code with Expo Go (the Camera app can open the link on iPhone). From the Expo terminal, press `i` for an installed iOS simulator or `a` for a configured Android emulator. Press Ctrl+C to stop the server.
 
 You can also start a specific platform directly:
@@ -77,14 +85,14 @@ These checks validate dependencies and bundling; use the manual checks below to 
 ## Test the onion workflow
 
 1. Start the app and select **Inventory** in the bottom navigation. Onion starts at 16 lbs with a minimum of 10 lbs.
-2. Press onion's **−** six times. At 10 lbs it should remain normal and should not appear in **Restock List**.
-3. Return to Inventory and press **−** once more. At 9 lbs, onion should have a red card and a **(LOW)** label. A red banner should offer a link to Restock List.
-4. Open **Restock List**. Onion should appear. Press **+** once; stock reaches 10 lbs and onion should disappear immediately.
+2. Leave onion's selected quantity at 1 lb and press **Use** six times. At 10 lbs it should remain normal and should not appear in **Restock List**.
+3. Return to Inventory and press **Use** once more. At 9 lbs, onion should have a red card and a **(LOW)** label. A red banner should offer a link to Restock List.
+4. Open **Restock List**. Onion should appear. With 1 lb selected, press **Add** once; stock reaches 10 lbs and onion should disappear immediately.
 5. Return to Inventory, reduce onion to 9 lbs again, then open its three-dot menu. Set **Minimum Level** to 9 and tap **Save**. Onion should lose its low-stock styling and be absent when you reopen Restock List.
 6. Set the minimum back to 10. Onion should appear in Restock List again. Increase its stock in Inventory to 10, then reopen Restock List; onion should be absent.
-7. In the editor, try an empty or negative quantity. Saving should show a validation error. Stock cannot fall below zero using **−**.
+7. In the editor, try an empty or negative quantity. Saving should show a validation error. **Use** is disabled when the selected quantity exceeds current stock.
 
-Only ingredients with `stock < min` belong on Restock List. Matching the minimum is sufficient. The list is recalculated from shared inventory on every render, including when switching tabs. The number between **−** and **+** is the quantity changed per press (1 lb for onion).
+Only ingredients with `stock < min` belong on Restock List. Matching the minimum is sufficient. The list is recalculated from shared inventory on every render, including when switching tabs. The **−** and **+** buttons select a quantity without changing stock. **Add** increases stock by that quantity; **Use** decreases it. The selected quantity starts at 1 lb for onion and cannot go below 1.
 
 Inventory changes survive tab switches but are held in memory; restarting or fully reloading the app resets the initial quantities.
 
