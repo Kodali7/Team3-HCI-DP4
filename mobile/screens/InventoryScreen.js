@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Pressable, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { Alert, StyleSheet, Text, View, Pressable, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather';
 import { COLORS } from '../theme';
 
@@ -10,6 +10,12 @@ export default function InventoryScreen({ items, setItems, restock = false, onVi
   const [minInput, setMinInput] = useState('');
   const [error, setError] = useState('');
   const visibleItems = restock ? items.filter((item) => item.stock < item.min) : items;
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newUnit, setNewUnit] = useState('');
+  const [newStock, setNewStock] = useState('');
+  const [newMin, setNewMin] = useState('');
+  const [addError, setAddError] = useState('');
 
   // Hide the confirmation banner a few seconds after each change
   useEffect(() => {
@@ -54,9 +60,109 @@ export default function InventoryScreen({ items, setItems, restock = false, onVi
     setEditing(null);
   };
 
+  const openAddForm = () => {
+    setNewName('');
+    setNewUnit('');
+    setNewStock('');
+    setNewMin('');
+    setAddError('');
+    setAdding(true);
+  };
+
+  const addIngredient = () => {
+    const name = newName.trim();
+    const unit = newUnit.trim();
+    const stockText = newStock.trim();
+    const minText = newMin.trim();
+    const stock = Number(stockText);
+    const min = Number(minText);
+
+    if (!name || !unit) {
+      setAddError('Enter an ingredient name and unit.');
+      return;
+    }
+
+    if (
+      !stockText ||
+      !minText ||
+      !Number.isFinite(stock) ||
+      !Number.isFinite(min) ||
+      stock < 0 ||
+      min < 0
+    ) {
+      setAddError('Stock and minimum level must be numbers of zero or more.');
+      return;
+    }
+
+    const duplicate = items.some(
+      (item) => item.name.trim().toLowerCase() === name.toLowerCase()
+    );
+
+    if (duplicate) {
+      setAddError('This ingredient already exists.');
+      return;
+    }
+
+    const ingredient = {
+      id: `ingredient-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name,
+      unit,
+      stock,
+      min,
+      amount: 1,
+    };
+
+    setItems((prev) => [...prev, ingredient]);
+    setAdding(false);
+
+    if (stock < min) {
+      setMessage(`${name} was added to the Restock List`);
+    }
+  };
+
+  const confirmDeleteIngredient = () => {
+    if (!editing) return;
+
+    const ingredient = editing;
+
+    Alert.alert(
+      `Delete ${ingredient.name}?`,
+      'This will remove the ingredient from your inventory.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setItems((prev) =>
+              prev.filter((item) => item.id !== ingredient.id)
+            );
+            setEditing(null);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{restock ? 'Restock List' : 'Inventory'}</Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.title, { marginBottom: 0, flex: 1 }]}>
+          {restock ? 'Restock List' : 'Inventory'}
+        </Text>
+
+        {!restock && (
+          <Pressable
+            style={styles.newIngredientButton}
+            onPress={openAddForm}
+            accessibilityRole="button"
+            accessibilityLabel="Add ingredient"
+          >
+            <Feather name="plus" size={16} color={COLORS.surface} />
+            <Text style={styles.saveLabel}>Add Ingredient</Text>
+          </Pressable>
+        )}
+      </View>
       {message && (
         <Pressable style={styles.banner} onPress={onViewRestock} accessibilityRole="button"
           accessibilityLabel={`${message}. View Restock List`}>
@@ -72,9 +178,6 @@ export default function InventoryScreen({ items, setItems, restock = false, onVi
           return (
             <View key={item.id} style={[styles.card, low && styles.cardLow]}>
               <View style={styles.cardTop}>
-                <View style={styles.image}>
-                  <Feather name="image" size={22} color={COLORS.primary} />
-                </View>
                 <View style={styles.info}>
                   <Text style={[styles.name, low && styles.lowText]}>
                     {item.name}{low ? '  (LOW)' : ''}
@@ -128,6 +231,42 @@ export default function InventoryScreen({ items, setItems, restock = false, onVi
           );
         })}
       </ScrollView>
+      <Modal visible={adding} transparent animationType="fade" onRequestClose={() => setAdding(false)}>
+        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.modal, styles.formModal]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.name}>Add Ingredient</Text>
+              <Pressable onPress={() => setAdding(false)} accessibilityRole="button"
+                accessibilityLabel="Close add ingredient form" hitSlop={10}>
+                <Feather name="x" size={20} color={COLORS.text} />
+              </Pressable>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.inputLabel}>Name:</Text>
+              <TextInput style={styles.input} value={newName} onChangeText={setNewName}
+                accessibilityLabel="Ingredient name" maxLength={80} />
+              <Text style={styles.inputLabel}>Unit:</Text>
+              <TextInput style={styles.input} value={newUnit} onChangeText={setNewUnit}
+                placeholder="e.g. lbs, cans, each" accessibilityLabel="Ingredient unit" maxLength={20} />
+              <Text style={styles.inputLabel}>Current Stock:</Text>
+              <TextInput style={styles.input} value={newStock} onChangeText={setNewStock}
+                keyboardType="decimal-pad" accessibilityLabel="Current stock" />
+              <Text style={styles.inputLabel}>Minimum Level:</Text>
+              <TextInput style={styles.input} value={newMin} onChangeText={setNewMin}
+                keyboardType="decimal-pad" accessibilityLabel="Minimum level" />
+              {addError ? <Text style={styles.lowText} accessibilityLiveRegion="polite">{addError}</Text> : null}
+              <View style={styles.modalActions}>
+                <Pressable style={styles.cancelButton} onPress={() => setAdding(false)} accessibilityRole="button">
+                  <Text style={styles.detail}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.saveButton} onPress={addIngredient} accessibilityRole="button">
+                  <Text style={styles.saveLabel}>Add Ingredient</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       <Modal visible={editing !== null} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modal}>
@@ -145,10 +284,7 @@ export default function InventoryScreen({ items, setItems, restock = false, onVi
               keyboardType="decimal-pad" accessibilityLabel="Current stock" />
             {error ? <Text style={styles.lowText} accessibilityLiveRegion="polite">{error}</Text> : null}
             <View style={styles.modalActions}>
-              <Pressable style={styles.deleteButton} onPress={() => {
-                setItems((prev) => prev.filter((item) => item.id !== editing.id));
-                setEditing(null);
-              }}>
+              <Pressable style={styles.deleteButton} onPress={confirmDeleteIngredient} accessibilityRole="button">
                 <Text style={styles.lowText}>Delete</Text>
               </Pressable>
               <Pressable style={styles.saveButton} onPress={saveItem}>
@@ -163,6 +299,36 @@ export default function InventoryScreen({ items, setItems, restock = false, onVi
 }
 
 const styles = StyleSheet.create({
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 22,
+  },
+  newIngredientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+  },
+  formModal: {
+    maxHeight: '85%',
+  },
+  cancelButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import BottomNav from './components/BottomNav';
 import TruckManagementScreen from './screens/TruckManagementScreen';
 import InventoryScreen from './screens/InventoryScreen';
+import DishScreen, { INITIAL_DISHES } from './screens/DishScreen';
 import RestockScreen from './screens/RestockScreen';
 import { COLORS } from './theme';
 
@@ -37,6 +38,7 @@ function ComingSoon({ title }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('truck');
   const [items, setItems] = useState(INITIAL_ITEMS);
+  const [dishes, setDishes] = useState(INITIAL_DISHES);
   const [contacts, setContacts] = useState([
     { id: 'employee-1', name: 'Employee 1', phone: '312-555-0101', email: 'employee1@example.com' },
     { id: 'employee-2', name: 'Employee 2', phone: '312-555-0102', email: 'employee2@example.com' },
@@ -49,11 +51,26 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      {activeTab === 'truck' && <TruckManagementScreen />}
+      {activeTab === 'truck' && <TruckManagementScreen items={items} onViewRestock={() => setActiveTab('restock')} />}
       {activeTab === 'inventory' && <InventoryScreen items={items} setItems={setItems} onViewRestock={() => setActiveTab('restock')} />}
-      {activeTab === 'dishes' && <ComingSoon title="Dishes" />}
-      {activeTab === 'restock' && <RestockScreen items={items} contacts={contacts} setContacts={setContacts}
-        vendors={vendors} setVendors={setVendors} onViewInventory={() => setActiveTab('inventory')} />}
+      {activeTab === 'dishes' && (
+        <DishScreen
+          items={items}
+          setItems={setItems}
+          dishes={dishes}
+          setDishes={setDishes}
+        />
+      )}
+      {activeTab === 'restock' && (
+        <RestockScreen
+          items={items}
+          contacts={contacts}
+          setContacts={setContacts}
+          vendors={vendors}
+          setVendors={setVendors}
+          onViewInventory={() => setActiveTab('inventory')}
+        />
+      )}
       <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />
     </View>
   );
