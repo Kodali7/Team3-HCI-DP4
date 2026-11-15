@@ -83,9 +83,10 @@ export default function DishScreen({ items, setItems, dishes, setDishes }) {
       setError('Select at least one ingredient and enter its quantity per dish.');
       return;
     }
-    if (selected.some((item) => !quantities[item.id].trim() ||
-      !Number.isFinite(Number(quantities[item.id])) || Number(quantities[item.id]) < 0.000001)) {
-      setError('Each selected ingredient needs a quantity of at least 0.000001.');
+    const invalidIngredients = selected.filter((item) => !quantities[item.id].trim() ||
+      !Number.isFinite(Number(quantities[item.id])) || Number(quantities[item.id]) < 0.000001);
+    if (invalidIngredients.length) {
+      setError(`Enter valid quantity for: ${invalidIngredients.map((item) => item.name).join(', ')}`);
       return;
     }
     const dish = {
