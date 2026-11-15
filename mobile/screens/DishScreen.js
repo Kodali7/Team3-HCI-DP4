@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather';
 import { COLORS } from '../theme';
 
 // Sample recipes: quantities are for one dish, in the inventory's units.
-const DISHES = [
+export const INITIAL_DISHES = [
   {
     id: 'chicken-tacos', name: 'Chicken Tacos', minutes: 20,
     description: 'Warm tortillas filled with chicken, tomato, onion, and shredded cheese.',
@@ -47,11 +47,58 @@ function unavailableIngredients(dish, items) {
   });
 }
 
-export default function DishScreen({ items, setItems }) {
+export default function DishScreen({ items, setItems, dishes, setDishes }) {
   const [dialog, setDialog] = useState(null);
   const [selectedDish, setSelectedDish] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newMinutes, setNewMinutes] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [quantities, setQuantities] = useState({});
+
+  const openAddDish = () => {
+    setNewName('');
+    setNewMinutes('');
+    setNewDescription('');
+    setQuantities({});
+    setError('');
+    setDialog('add');
+  };
+
+  const addDish = () => {
+    const name = newName.trim();
+    const description = newDescription.trim();
+    const minutes = Number(newMinutes);
+    if (!name || !description || !newMinutes.trim() || !Number.isFinite(minutes) || minutes <= 0) {
+      setError('Enter a name, description, and cooking time greater than zero.');
+      return;
+    }
+    if (dishes.some((dish) => dish.name.toLowerCase() === name.toLowerCase())) {
+      setError('A dish with this name already exists.');
+      return;
+    }
+    const selected = items.filter((item) => quantities[item.id] !== undefined);
+    if (!selected.length) {
+      setError('Select at least one ingredient and enter its quantity per dish.');
+      return;
+    }
+    if (selected.some((item) => !quantities[item.id].trim() ||
+      !Number.isFinite(Number(quantities[item.id])) || Number(quantities[item.id]) < 0.000001)) {
+      setError('Each selected ingredient needs a quantity of at least 0.000001.');
+      return;
+    }
+    const dish = {
+      id: `dish-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name, description, minutes,
+      ingredients: selected.map((item) => ({
+        id: item.id, name: item.name, unit: item.unit, quantity: Number(quantities[item.id]),
+      })),
+    };
+    setDishes((prev) => [...prev, dish]);
+    setMessage(`${name} added to Dishes.`);
+    setDialog(null);
+  };
 
   const openDialog = (dish, nextDialog) => {
     setSelectedDish(dish);
@@ -82,7 +129,13 @@ export default function DishScreen({ items, setItems }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Dishes</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Dishes</Text>
+        <Pressable style={styles.addDishButton} onPress={openAddDish} accessibilityRole="button">
+          <Feather name="plus" size={16} color={COLORS.surface} />
+          <Text style={styles.buttonLabel}>Add Dish</Text>
+        </Pressable>
+      </View>
       {message ? (
         <View style={styles.success}>
           <Text style={styles.successText} accessibilityLiveRegion="polite">{message}</Text>
@@ -93,7 +146,7 @@ export default function DishScreen({ items, setItems }) {
         </View>
       ) : null}
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {DISHES.map((dish) => {
+        {dishes.map((dish) => {
           const missing = unavailableIngredients(dish, items);
           const disabled = missing.length > 0;
           return (
@@ -124,18 +177,65 @@ export default function DishScreen({ items, setItems }) {
         })}
       </ScrollView>
       <Modal visible={dialog !== null} transparent animationType="fade" onRequestClose={() => setDialog(null)}>
-        <View style={styles.overlay}>
+        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={[styles.name, styles.dialogTitle]}>
-                {dialog === 'cook' ? `Cook ${selectedDish?.name}?` : selectedDish?.name}
+                {dialog === 'add' ? 'Add Dish' : dialog === 'cook' ? `Cook ${selectedDish?.name}?` : selectedDish?.name}
               </Text>
               <Pressable onPress={() => setDialog(null)} accessibilityRole="button"
                 accessibilityLabel="Close dish dialog" hitSlop={10}>
                 <Feather name="x" size={20} color={COLORS.text} />
               </Pressable>
             </View>
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {dialog === 'add' && (
+                <>
+                  <Text style={styles.label}>Dish Name</Text>
+                  <TextInput style={styles.input} value={newName} onChangeText={setNewName}
+                    accessibilityLabel="Dish name" maxLength={80} />
+                  <Text style={styles.label}>Time in Minutes</Text>
+                  <TextInput style={styles.input} value={newMinutes} onChangeText={setNewMinutes}
+                    accessibilityLabel="Cooking time in minutes" keyboardType="decimal-pad" />
+                  <Text style={styles.label}>Description</Text>
+                  <TextInput style={[styles.input, styles.descriptionInput]} value={newDescription}
+                    onChangeText={setNewDescription} accessibilityLabel="Dish description" multiline maxLength={500} />
+                  <Text style={styles.label}>Ingredients per Dish</Text>
+                  <Text style={styles.description}>Select ingredients and enter the amount used for one dish.</Text>
+                  {items.length === 0 && <Text style={styles.description}>Add ingredients in Inventory first.</Text>}
+                  {items.map((item) => {
+                    const selected = quantities[item.id] !== undefined;
+                    return (
+                      <View key={item.id} style={styles.ingredientRow}>
+                        <Pressable style={styles.ingredientChoice} accessibilityRole="checkbox"
+                          accessibilityLabel={item.name} accessibilityState={{ checked: selected }}
+                          onPress={() => setQuantities((prev) => {
+                            const next = { ...prev };
+                            if (selected) delete next[item.id];
+                            else next[item.id] = '';
+                            return next;
+                          })}>
+                          <Feather name={selected ? 'check-square' : 'square'} size={20} color={COLORS.text} />
+                          <Text style={styles.choiceLabel}>{item.name} ({item.unit})</Text>
+                        </Pressable>
+                        {selected && <TextInput style={styles.input} value={quantities[item.id]}
+                          onChangeText={(value) => setQuantities((prev) => ({ ...prev, [item.id]: value }))}
+                          keyboardType="decimal-pad" placeholder={`Quantity in ${item.unit}`}
+                          accessibilityLabel={`${item.name} quantity per dish in ${item.unit}`} />}
+                      </View>
+                    );
+                  })}
+                  {error ? <Text style={styles.error} accessibilityLiveRegion="polite">{error}</Text> : null}
+                  <View style={styles.actions}>
+                    <Pressable style={styles.outline} onPress={() => setDialog(null)} accessibilityRole="button">
+                      <Text style={styles.outlineLabel}>Cancel</Text>
+                    </Pressable>
+                    <Pressable style={styles.button} onPress={addDish} accessibilityRole="button">
+                      <Text style={styles.buttonLabel}>Add Dish</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
               {dialog === 'ingredients' && (
                 <>
                   <Text style={styles.description}>Ingredients for one dish:</Text>
@@ -167,7 +267,7 @@ export default function DishScreen({ items, setItems }) {
               )}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -175,7 +275,15 @@ export default function DishScreen({ items, setItems }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background, paddingHorizontal: 20, paddingTop: 60 },
-  title: { fontSize: 26, fontWeight: '700', color: COLORS.text, marginBottom: 22 },
+  title: { fontSize: 26, fontWeight: '700', color: COLORS.text, flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 22 },
+  addDishButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.primary, borderRadius: 8, padding: 12, minHeight: 44 },
+  label: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 10, color: COLORS.text, marginBottom: 14, minHeight: 44 },
+  descriptionInput: { minHeight: 80, textAlignVertical: 'top' },
+  ingredientRow: { marginBottom: 8 },
+  ingredientChoice: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
+  choiceLabel: { flex: 1, color: COLORS.text, fontSize: 14 },
   list: { paddingBottom: 120 },
   card: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 16, marginBottom: 12 },
   name: { fontSize: 18, fontWeight: '700', color: COLORS.text },

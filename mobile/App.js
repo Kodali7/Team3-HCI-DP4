@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import BottomNav from './components/BottomNav';
 import TruckManagementScreen from './screens/TruckManagementScreen';
 import InventoryScreen from './screens/InventoryScreen';
-import DishScreen from './screens/DishScreen';
+import DishScreen, { INITIAL_DISHES } from './screens/DishScreen';
 import { COLORS } from './theme';
 
 // Kept here so inventory changes survive switching tabs
@@ -37,13 +37,14 @@ function ComingSoon({ title }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('truck');
   const [items, setItems] = useState(INITIAL_ITEMS);
+  const [dishes, setDishes] = useState(INITIAL_DISHES);
 
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
       {activeTab === 'truck' && <TruckManagementScreen />}
       {activeTab === 'inventory' && <InventoryScreen items={items} setItems={setItems} onViewRestock={() => setActiveTab('restock')} />}
-      {activeTab === 'dishes' && <DishScreen items={items} setItems={setItems} />}
+      {activeTab === 'dishes' && <DishScreen items={items} setItems={setItems} dishes={dishes} setDishes={setDishes} />}
       {activeTab === 'restock' && <InventoryScreen items={items} setItems={setItems} restock onViewRestock={() => setActiveTab('restock')} />}
       <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />
     </View>
