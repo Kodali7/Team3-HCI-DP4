@@ -155,11 +155,11 @@ export default function RestockScreen({ items, contacts, setContacts, vendors, s
               {step === 'sent' && <>
                 <View style={styles.personHeading}><Feather name="user" size={18} color={COLORS.primary} /><Text style={[styles.name, styles.info]}>{receipt?.name}</Text></View>
                 <View style={styles.success}><Feather name="check" size={22} color={COLORS.primary} /><Text style={styles.name}>{kind === 'contact' ? 'Text Sent!' : 'Order Sent!'}</Text></View>
-                <Text style={styles.muted}>Demo confirmation for {receipt?.count} {receipt?.count === 1 ? 'ingredient' : 'ingredients'}. Nothing was transmitted.</Text>
+                <Text style={styles.muted}>Demo confirmation for {receipt?.count} {receipt?.count === 1 ? 'ingredient' : 'ingredients'}.</Text>
                 {!!receipt?.notes && <Text style={styles.contactDetail}>Note: {receipt.notes}</Text>}
                 <Pressable style={styles.centerButton} accessibilityRole="button" onPress={() => setStep(null)}><Text style={styles.buttonLabel}>Done</Text></Pressable>
               </>}
-              {step !== 'sent' && <Text style={styles.demo}>Prototype: texts and orders are simulated.</Text>}
+              {step !== 'sent'}
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
