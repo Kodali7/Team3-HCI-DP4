@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import BottomNav from './components/BottomNav';
 import TruckManagementScreen from './screens/TruckManagementScreen';
 import InventoryScreen from './screens/InventoryScreen';
+import DishScreen from './screens/DishScreen';
 import { COLORS } from './theme';
 
 // Kept here so inventory changes survive switching tabs
@@ -42,7 +43,7 @@ export default function App() {
       <StatusBar style="auto" />
       {activeTab === 'truck' && <TruckManagementScreen />}
       {activeTab === 'inventory' && <InventoryScreen items={items} setItems={setItems} onViewRestock={() => setActiveTab('restock')} />}
-      {activeTab === 'dishes' && <ComingSoon title="Dishes" />}
+      {activeTab === 'dishes' && <DishScreen items={items} setItems={setItems} />}
       {activeTab === 'restock' && <InventoryScreen items={items} setItems={setItems} restock onViewRestock={() => setActiveTab('restock')} />}
       <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />
     </View>
