@@ -43,7 +43,7 @@ npx expo login --help       # Show all login options (-h also works)
 npx expo whoami             # Confirm which account the CLI is using
 ```
 
-`-b` starts browser login; `-h` shows the available options. If you signed up with Google and have no Expo password, use browser login with Google.
+If you signed up with Google and have no Expo password, use browser login with Google.
 
 Scan the terminal QR code with Expo Go (the Camera app can open the link on iPhone). From the Expo terminal, press `i` for an installed iOS simulator or `a` for a configured Android emulator. Press Ctrl+C to stop the server.
 
@@ -55,7 +55,7 @@ npm run ios
 npm run android
 ```
 
-The web script is present, but browser dependencies are not installed in this mobile setup. Use a phone or simulator for the workflow below.
+For a local browser preview, run `npm run web` from `mobile/`. Expo prints the local URL. Use a phone-sized browser viewport to compare the mobile layout with the design. Browser dependencies are included.
 
 ## Check the code
 
@@ -72,21 +72,21 @@ npx expo export --platform ios --output-dir dist/ios
 npx expo export --platform android --output-dir dist/android
 ```
 
-These checks validate dependencies and bundling; use the manual checks below to verify interaction and appearance. There is currently no automated UI test suite or `npm test` script.
+These checks validate dependencies and bundling. use the manual checks below to verify interaction and appearance. Browser interaction tests are available: run `npx playwright install chromium` once, then `npm test` from `mobile/`. The tests start Expo on port 8081 if it is not already running.
 
 ## Test the onion workflow
 
 1. Start the app and select **Inventory** in the bottom navigation. Onion starts at 16 lbs with a minimum of 10 lbs.
 2. Leave onion's selected quantity at 1 lb and press **Use** six times. At 10 lbs it should remain normal and should not appear in **Restock List**.
 3. Return to Inventory and press **Use** once more. At 9 lbs, onion should have a red card and a **(LOW)** label. A red banner should offer a link to Restock List.
-4. Open **Restock List**. Onion should appear. With 1 lb selected, press **Add** once; stock reaches 10 lbs and onion should disappear immediately.
+4. Open **Restock List**. Onion should appear. Return to Inventory and press **Add** with 1 lb selected. stock reaches 10 lbs. Reopen Restock List. onion should be absent.
 5. Return to Inventory, reduce onion to 9 lbs again, then open its three-dot menu. Set **Minimum Level** to 9 and tap **Save**. Onion should lose its low-stock styling and be absent when you reopen Restock List.
-6. Set the minimum back to 10. Onion should appear in Restock List again. Increase its stock in Inventory to 10, then reopen Restock List; onion should be absent.
+6. Set the minimum back to 10. Onion should appear in Restock List again. Increase its stock in Inventory to 10, then reopen Restock List. onion should be absent.
 7. In the editor, try an empty or negative quantity. Saving should show a validation error. **Use** is disabled when the selected quantity exceeds current stock.
 
-Only ingredients with `stock < min` belong on Restock List. Matching the minimum is sufficient. The list is recalculated from shared inventory on every render, including when switching tabs. The **−** and **+** buttons select a quantity without changing stock. **Add** increases stock by that quantity; **Use** decreases it. The selected quantity starts at 1 lb for onion and cannot go below 1.
+Only ingredients with `stock < min` belong on Restock List. Stock equal to the minimum does not trigger restocking. The list is recalculated from shared inventory on every render, including when switching tabs. The **−** and **+** buttons select a quantity without changing stock. **Add** increases stock by that quantity. **Use** decreases it. The selected quantity starts at 1 lb for onion and cannot go below 1.
 
-Inventory changes survive tab switches but are held in memory; restarting or fully reloading the app resets the initial quantities.
+Inventory changes survive tab switches but are held in memory. restarting or fully reloading the app resets the initial quantities.
 
 ## Troubleshooting
 
@@ -94,14 +94,41 @@ Inventory changes survive tab switches but are held in memory; restarting or ful
 - **Expo reports `Team3-HCI-DP4/package.json does not exist`:** run Expo from `mobile/`. Do not install a separate Expo project in the repository root.
 - **`expo: command not found`:** run `npm ci` from `mobile/`, then `npm start`, which uses the project's local Expo CLI.
 - **Stale Metro cache:** stop the server and run `npm start -- --clear` from `mobile/`.
-- **Phone cannot connect:** verify both devices use the same Wi-Fi and that Expo Go supports SDK 58. If LAN access is blocked, try `npm start -- --tunnel`; Expo may prompt to install its tunnel helper.
+- **Phone cannot connect:** verify both devices use the same Wi-Fi and that Expo Go supports SDK 58. If LAN access is blocked, try `npm start -- --tunnel`. Expo may prompt to install its tunnel helper.
 - **`git switch -b` reports an unknown option:** use `git switch main` for an existing branch or `git switch -c your-branch-name` to create a new branch. `-b` belongs to `git checkout`.
 
 ## Project structure
 
-- `mobile/App.js`: shared inventory state and tab selection.
-- `mobile/screens/InventoryScreen.js`: inventory, Restock List, and stock/minimum editor.
+- `mobile/App.js`: shared inventory and contact state, plus tab selection.
+- `mobile/screens/InventoryScreen.js`: inventory and stock/minimum editor.
+- `mobile/screens/RestockScreen.js`: derived Restock List, employee contacts, vendor contacts, and order dialogs.
+- `mobile/tests/restock.spec.js`: browser tests for restock workflows.
 - `mobile/screens/TruckManagementScreen.js`: truck management screen.
 - `mobile/components/BottomNav.js`: bottom navigation.
 - `mobile/theme.js`: shared colors.
 - `mobile/assets/`: images and app icons.
+
+## Text the list and send a vendor order
+
+Start in Inventory. Edit Onion and set Current Stock to 7, leaving Minimum Level at 10. For an order with multiple ingredients, set Rice to 2 bags with a minimum of 5. Open Restock List. Each card shows current and minimum stock levels. It also shows how much is needed to reach the minimum.
+
+To text an employee:
+
+1. Select **Text List** to open Contact List.
+2. Choose an employee, or select **Add** to create a contact. All fields are required: name, phone number and email address. The Add button stays disabled until the fields are valid.
+3. Select the contact to review their details, then select **Text**.
+4. The confirmation displays **Text Sent!**. Select **Done** to return to Restock List.
+
+To order from a vendor:
+
+1. Select **Send Order** to open Vendor List.
+2. Choose a vendor, or add one with a name, phone number and email address.
+3. Select **Order** to preview the current shortages. Only ingredients below their minimum appear.
+4. Add an optional note. **Cancel** returns to vendor details without sending and retains the note for that preview.
+5. Select **Send** to see **Order Sent!**, then **Done** to return to the list.
+
+Contact and vendor details include a Delete action with a confirmation step. Closing a dialog cancels the current flow. Added or deleted contacts survive tab changes. Reloading the app resets inventory and contacts to the sample data.
+
+Texts and orders are simulated locally, as permitted for prototype outputs in the assignment. No SMS, email, or purchase order leaves the app. Sending does not change inventory. use Inventory's Add action when ingredients arrive. Sample contacts use reserved example.com addresses and fictional phone numbers.
+
+The Dishes placeholder and inactive Truck Management menu entries are unchanged. They are outside the restock task. Visual comparison used the supplied Figma overview screenshot because the Figma connector reached its plan limit.

@@ -5,6 +5,7 @@ import BottomNav from './components/BottomNav';
 import TruckManagementScreen from './screens/TruckManagementScreen';
 import InventoryScreen from './screens/InventoryScreen';
 import DishScreen, { INITIAL_DISHES } from './screens/DishScreen';
+import RestockScreen from './screens/RestockScreen';
 import { COLORS } from './theme';
 
 // Kept here so inventory changes survive switching tabs
@@ -38,14 +39,38 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('truck');
   const [items, setItems] = useState(INITIAL_ITEMS);
   const [dishes, setDishes] = useState(INITIAL_DISHES);
+  const [contacts, setContacts] = useState([
+    { id: 'employee-1', name: 'Employee 1', phone: '312-555-0101', email: 'employee1@example.com' },
+    { id: 'employee-2', name: 'Employee 2', phone: '312-555-0102', email: 'employee2@example.com' },
+  ]);
+  const [vendors, setVendors] = useState([
+    { id: 'vendor-1', name: 'Vendor 1', phone: '312-555-0111', email: 'vendor1@example.com' },
+    { id: 'vendor-2', name: 'Vendor 2', phone: '312-555-0112', email: 'vendor2@example.com' },
+  ]);
 
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
       {activeTab === 'truck' && <TruckManagementScreen items={items} onViewRestock={() => setActiveTab('restock')} />}
       {activeTab === 'inventory' && <InventoryScreen items={items} setItems={setItems} onViewRestock={() => setActiveTab('restock')} />}
-      {activeTab === 'dishes' && <DishScreen items={items} setItems={setItems} dishes={dishes} setDishes={setDishes} />}
-      {activeTab === 'restock' && <InventoryScreen items={items} setItems={setItems} restock onViewRestock={() => setActiveTab('restock')} />}
+      {activeTab === 'dishes' && (
+        <DishScreen
+          items={items}
+          setItems={setItems}
+          dishes={dishes}
+          setDishes={setDishes}
+        />
+      )}
+      {activeTab === 'restock' && (
+        <RestockScreen
+          items={items}
+          contacts={contacts}
+          setContacts={setContacts}
+          vendors={vendors}
+          setVendors={setVendors}
+          onViewInventory={() => setActiveTab('inventory')}
+        />
+      )}
       <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />
     </View>
   );

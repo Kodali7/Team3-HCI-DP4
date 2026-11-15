@@ -21,6 +21,7 @@ export default function BottomNav({ activeTab, onTabPress }) {
             style={styles.navItem}
             onPress={() => onTabPress(tab.key)}
             accessibilityRole="tab"
+            accessibilityLabel={tab.label}
             accessibilityState={{ selected: active }}
           >
             <Feather name={tab.icon} size={22} color={color} />
